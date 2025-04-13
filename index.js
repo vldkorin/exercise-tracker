@@ -72,7 +72,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
       userId: user._id,
       description: description,
       duration: duration,
-      date: date ? new Date(date) : new Date()
+      date: date ? new Date(date).toDateString() : new Date().toDateString()
     });
     
     const savedExercise = await newExercise.save();
@@ -85,6 +85,64 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: 'Error creating exercise' });
+  }
+});
+
+
+// TODO 
+// logs in format 
+/**
+ * {
+  username: "fcc_test",
+  count: 1,
+  _id: "5fb5853f734231456ccb3b05",
+  log: [{
+    description: "test",
+    duration: 60,
+    date: "Mon Jan 01 1990",
+  }]
+}
+ * 
+ */
+app.get('/api/users/:_id/logs', async (req, res) => {
+  try {
+    const userId = req.params._id;
+    const user = await User.findById(userId);
+    const { from, to, limit } = req.query;
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let dateFilter = {};
+    if (from) dateFilter.$gte = new Date(from);
+    if (to) dateFilter.$lte = new Date(to);
+
+    let query = { userId: userId };
+    if (from || to) query.date = dateFilter;
+
+    let exercisesQuery = Exercise.find(query);
+
+    if (limit) {
+      exercisesQuery = exercisesQuery.limit(parseInt(limit));
+    }
+
+    const exercises = await Exercise.find({ userId: userId });
+
+    const log = exercises.map(ex => ({
+      description: ex.description,
+      duration: ex.duration,
+      date: new Date(ex.date).toDateString(),
+    }));
+
+    res.json({
+      username: user.username,
+      count: exercises.length,
+      _id: userId,
+      log: log
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
